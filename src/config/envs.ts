@@ -22,8 +22,7 @@ const envsSchema = joi
     PORT: joi.number().required(),
     HOST: joi.string().required(),
     ENVIRONMENT: joi.string().valid('prod', 'dev').required(),
-
-    FRONTEND_SERVERS: joi.array().items(joi.string().uri()).default([]),
+    FRONTEND_SERVERS: joi.array().items(joi.string()).required(),
     // Keycloak configuration
     KEYCLOAK_HOST: joi.string().required(),
     KEYCLOAK_PORT: joi.string().required(),
@@ -37,6 +36,7 @@ const envsSchema = joi
 
 const { error, value } = envsSchema.validate({
   ...process.env,
+  FRONTEND_SERVERS: process.env.FRONTEND_SERVERS?.split(','),
 });
 
 if (error) {
