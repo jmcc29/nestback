@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { KeycloakEnvs } from '../config/envs';
-import { UmaDecisionReq, UmaPermissionsReq } from './interfaces';
+import { UmaDecisionReq, UmaPermissionsReq } from '../keycloak/interfaces';
 
 const base = KeycloakEnvs.url || 'http://localhost:8080/auth';
 const realm = KeycloakEnvs.realm || 'master';

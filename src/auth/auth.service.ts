@@ -4,12 +4,13 @@ import { deriveRedirectUri } from './utils/origins';
 import { PENDING_STORE, SESSION_STORE } from 'src/session/session.module';
 import { PendingStore } from 'src/session/pending/pending.store';
 import { SessionStore } from 'src/session/store/session.store';
-import { authorizeEndpoint, tokenRequest } from 'src/keycloak/keycloak.client';
+import { authorizeEndpoint, logoutRequest, tokenRequest, umaRequest } from 'src/keycloak/keycloak.client';
 import { LoginStartDto } from './dto/login-start.dto';
 import { ExchangeDto } from './dto/exchange.dto';
 import { SessionData } from 'src/session/session.types';
 import { KeycloakEnvs } from 'src/config/envs';
-import { peekRoles, peekSub } from './utils/jwt';
+import { peekRoles, peekSub, peekUserProfile } from './utils/jwt';
+import { config } from '../../../nextfront/src/middleware';
 @Injectable()
 export class AuthService {
   constructor(
@@ -94,5 +95,71 @@ export class AuthService {
     await this.sessions.gc();
 
     return { sid: sessionId, returnTo };
+  }
+
+  async logout(sid: string): Promise<void> {
+    
+    if (!sid) return;
+    const session = await this.sessions.get(sid);
+    if (!session) return;
+
+    const clientId = KeycloakEnvs.clientId;
+    const clientSecret = KeycloakEnvs.clientSecret;
+    const refreshToken = clientId ? session.clients?.[clientId]?.refreshToken : undefined;
+
+    if (clientId && refreshToken) {
+      try {
+        await logoutRequest(
+          refreshToken,
+          {
+            id: clientId,
+            secret: clientSecret,
+          },
+        );
+      } catch (e: any) {
+        console.error('Error during Keycloak logout request:', e?.message || e);
+      }
+    }
+
+    await this.sessions.del(sid);
+  }
+  
+  async getProfile(sid: string): Promise<any> {
+    const session = await this.sessions.get(sid);
+    if (!session) throw new Error('Sesión no encontrada');
+
+    const clientId = KeycloakEnvs.clientId;
+    const accessToken = clientId ? session.clients?.[clientId]?.accessToken : undefined;
+    if (!accessToken) throw new Error('No hay token de acceso en la sesión');
+
+    const profile = peekUserProfile(accessToken);
+    return profile;
+  }
+
+  async getPermissions(sid: string, clientId: string, audience: string): Promise<string[]> {
+    const session = await this.sessions.get(sid);
+    if (!session) throw new Error('Sesión no encontrada');
+    const accessToken = clientId ? session.clients?.[clientId]?.accessToken : undefined;
+    if (!accessToken) throw new Error('No hay token de acceso en la sesión');
+    const permissions= await umaRequest({
+      accessToken,
+      audience,
+      responseMode: 'permissions',
+    })
+    return permissions;
+  }
+
+  async evaluatePermission(sid: string, clientId: string, audience: string, permission: string) {
+    const session = await this.sessions.get(sid);
+    if (!session) throw new Error('Sesión no encontrada');
+    const accessToken = clientId ? session.clients?.[clientId]?.accessToken : undefined;
+    if (!accessToken) throw new Error('No hay token de acceso en la sesión');
+    const permissions= await umaRequest({
+      accessToken,
+      audience,
+      responseMode: 'decision',
+      permission, // "resource#scope"
+    })
+    return permissions;
   }
 }

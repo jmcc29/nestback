@@ -2,7 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import {SwaggerModule, DocumentBuilder} from '@nestjs/swagger';
 import { AppModule } from './app.module';
-
+import * as cookieParser from 'cookie-parser';
 import { BackendEnvs, FrontEnvs } from './config/envs';
 
 async function main() {
@@ -42,6 +42,7 @@ async function main() {
     allowedHeaders: ['Content-Type', 'Authorization', 'credentials'],
     credentials: true,
   });
+  app.use(cookieParser());
   const port = BackendEnvs.port ?? 3000;
   logger.log(`Server running at ${BackendEnvs.url}/api`);
   await app.listen(port);

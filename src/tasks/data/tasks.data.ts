@@ -1,0 +1,51 @@
+// src/tasks/tasks.data.ts
+import { Task } from '../entities/task.entity';
+
+export const TASKS: Task[] = [
+  {
+    id: 'task:alpha:erp:42',
+    orgCode: 'alpha',
+    projectCode: 'erp',
+    taskNumber: 42,
+    title: 'Diseñar esquema de base de datos',
+    description: 'Modelo inicial y relaciones',
+    assignedTo: 'user:juan',
+    status: 'in_progress',
+    createdAt: new Date('2024-05-01'),
+    updatedAt: new Date('2024-05-02'),
+  },
+  {
+    id: 'task:alpha:erp:43',
+    orgCode: 'alpha',
+    projectCode: 'erp',
+    taskNumber: 43,
+    title: 'Integrar autenticación con Keycloak',
+    description: 'OIDC + Authorization Services',
+    assignedTo: 'user:ana',
+    status: 'pending',
+    createdAt: new Date('2024-05-03'),
+    updatedAt: new Date('2024-05-03'),
+  },
+  {
+    id: 'task:alpha:webapp:10',
+    orgCode: 'alpha',
+    projectCode: 'webapp',
+    taskNumber: 10,
+    title: 'Diseñar interfaz responsive',
+    assignedTo: 'user:lucas',
+    status: 'completed',
+    createdAt: new Date('2024-05-07'),
+    updatedAt: new Date('2024-05-10'),
+  },
+  {
+    id: 'task:beta:crm:3',
+    orgCode: 'beta',
+    projectCode: 'crm',
+    taskNumber: 3,
+    title: 'Sincronización con correo',
+    assignedTo: 'user:maria',
+    status: 'in_progress',
+    createdAt: new Date('2024-06-21'),
+    updatedAt: new Date('2024-06-22'),
+  },
+];
