@@ -162,4 +162,15 @@ export class AuthService {
     })
     return permissions;
   }
+
+  /** Verificación criptográfica del access_token guardado (issuer + azp∈permitidos) */
+  async verifySessionAccessToken(sessionId: string, clientId: string) {
+    const s = await this.store.getSession(sessionId);
+    if (!s) throw new Error('Sesión inválida o expirada');
+    const set = s.clients?.[clientId];
+    if (!set?.accessToken) throw new Error('No hay access_token para el client_id');
+    const allowed = Array.from(CLIENTS_BY_ID.keys()); // ahora dinámico
+    return this.kc.verifyAccessToken(set.accessToken, { allowedClients: allowed });
+  }
+  
 }
