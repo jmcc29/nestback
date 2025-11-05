@@ -10,7 +10,7 @@ import { ExchangeDto } from './dto/exchange.dto';
 import { SessionData } from 'src/session/session.types';
 import { KeycloakEnvs } from 'src/config/envs';
 import { peekRoles, peekSub, peekUserProfile } from './utils/jwt';
-import { config } from '../../../nextfront/src/middleware';
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -93,7 +93,7 @@ export class AuthService {
 
     await this.sessions.set(sessionId, existing);
     await this.sessions.gc();
-
+    console.log('Token de keycloak:', data.access_token);
     return { sid: sessionId, returnTo };
   }
 

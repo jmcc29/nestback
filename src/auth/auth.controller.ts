@@ -49,7 +49,7 @@ export class AuthController {
     return res.status(200).json({ sessionId: sid, returnTo });
   }
 
-  @Post('logout')
+  @Delete('logout')
   @ApiQuery({
     name: 'sid',
     required: false,
@@ -125,7 +125,12 @@ export class AuthController {
     if (!clientId) {
       throw new Error('No se proporcionó client_id para permissions');
     }
-    if
+    if (!audience) {
+      throw new Error('No se proporcionó audience para permissions');
+    }
+    if (!permission) {
+      throw new Error('No se proporcionó permission para permissions');
+    }
     const result = await this.authService.evaluatePermission(sid, clientId, audience, permission);
     return result;
   }

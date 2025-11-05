@@ -1,8 +1,8 @@
 import axios from 'axios';
 import * as jose from 'jose-node-cjs-runtime';
 import { Injectable } from '@nestjs/common';
-import { KeycloakEnvs as kc} from '../config/envs';
-import { KeycloakConnectOptions} from '../keycloak/interfaces/keycloak-connect';
+import { KeycloakEnvs as kc } from '../config/envs';
+import { KeycloakConnectOptions } from './interfaces/keycloak-connect';
 
 @Injectable()
 export class KeycloakService {
@@ -14,7 +14,4 @@ export class KeycloakService {
       secret: kc.clientSecret || '',
     };
   }
-
-  
-
 }
