@@ -1,45 +1,38 @@
-// src/auth/guards/valid-token.guard.ts
-import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
-import { Request } from 'express';
-import { AuthService } from '../auth.service';
-import { extractSid, extractClientId } from '../utils/http';
+import {
+  CanActivate,
+  ExecutionContext,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { KeycloakService } from 'src/keycloak/keycloak.service';
+import { KeycloakEnvs } from 'src/config/envs';
 
 @Injectable()
 export class ValidTokenGuard implements CanActivate {
-  constructor(private readonly auth: AuthService) {}
+  constructor(private readonly keycloak: KeycloakService) {}
 
-  async canActivate(context: ExecutionContext): Promise<boolean> {
-    const req = context.switchToHttp().getRequest<Request>();
-
-    const sid = extractSid(req);
-    const clientId = extractClientId(req);
-
-    if (!sid) {
-      throw new UnauthorizedException('Falta cookie de sesión (sid)');
+  async canActivate(ctx: ExecutionContext): Promise<boolean> {
+    const req = ctx.switchToHttp().getRequest();
+    const auth = req.headers['authorization'] as string | undefined;
+    if (!auth?.startsWith('Bearer ')) {
+      throw new UnauthorizedException('Falta Authorization: Bearer');
     }
-    if (!clientId) {
-      throw new UnauthorizedException('Falta client_id (x-client-id o ?client_id)');
-    }
+    const token = auth.slice('Bearer '.length);
 
-    // 1) Verificación criptográfica del access_token guardado en la sesión
-    let valid = false;
     try {
-      valid = (await this.auth.verifySessionAccessToken(sid, clientId)).isValid;
-    } catch {
-      valid = false;
+      const { payload } = await this.keycloak.verifyAccessToken(token, {
+        azp: KeycloakEnvs.clientId, // ✅ validando azp
+        clockSkewSec: 90,
+      });
+      req.user = {
+        sub: payload.sub,
+        azp: payload.azp,
+        exp: payload.exp,
+      };
+      return true;
+    } catch (e) {
+      // Diferencia entre token inválido/expirado vs prohibido, si quieres
+      throw new UnauthorizedException('Token inválido o expirado');
     }
-    if (!valid) {
-      throw new UnauthorizedException('Token inválido o sesión expirada para este client_id');
-    }
-
-    // 2) (Opcional) Adjuntar perfil al request; si falla no bloquea
-    try {
-      const me = await this.auth.getProfile({ sessionId: sid, clientId });
-      (req as any).user = me;
-    } catch {
-      // Silencioso: ya validamos el token; el perfil es “nice to have”
-    }
-
-    return true;
   }
 }

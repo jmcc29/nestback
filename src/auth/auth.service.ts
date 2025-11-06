@@ -4,24 +4,23 @@ import { deriveRedirectUri } from './utils/origins';
 import { PENDING_STORE, SESSION_STORE } from 'src/session/session.module';
 import { PendingStore } from 'src/session/pending/pending.store';
 import { SessionStore } from 'src/session/store/session.store';
-import { authorizeEndpoint, logoutRequest, tokenRequest, umaRequest } from 'src/keycloak/keycloak.client';
+// import { authorizeEndpoint, logoutRequest, tokenRequest, umaRequest } from 'src/keycloak/keycloak.client';
 import { LoginStartDto } from './dto/login-start.dto';
 import { ExchangeDto } from './dto/exchange.dto';
 import { SessionData } from 'src/session/session.types';
 import { KeycloakEnvs } from 'src/config/envs';
 import { peekRoles, peekSub, peekUserProfile } from './utils/jwt';
+import { KeycloakService } from 'src/keycloak/keycloak.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     @Inject(PENDING_STORE) private readonly pending: PendingStore,
     @Inject(SESSION_STORE) private readonly sessions: SessionStore,
+    private readonly keycloak: KeycloakService,
   ) {}
 
-  async buildLoginUrl({
-    returnTo,
-    clientId,
-  }: LoginStartDto) {
+  async buildLoginUrl({ returnTo, clientId }: LoginStartDto) {
     const { verifier, challenge } = generatePkce();
     const state = randomId();
     const redirectUri = deriveRedirectUri(returnTo, clientId);
@@ -34,7 +33,7 @@ export class AuthService {
       createdAt: Date.now(),
     });
 
-    const url = new URL(authorizeEndpoint());
+    const url = new URL(this.keycloak.authorizeEndpoint());
     url.searchParams.set('client_id', clientId);
     url.searchParams.set('response_type', 'code');
     url.searchParams.set('scope', 'openid profile email');
@@ -45,12 +44,8 @@ export class AuthService {
 
     return { url: url.toString(), state };
   }
-  
-  async exchangeCode({
-    code,
-    state,
-    sidCookie,
-  }: ExchangeDto) {
+
+  async exchangeCode({ code, state, sidCookie }: ExchangeDto) {
     const stash = await this.pending.take(state);
     if (!stash) throw new Error('State no encontrado o expirado');
 
@@ -58,7 +53,7 @@ export class AuthService {
 
     const secret = KeycloakEnvs.clientSecret;
 
-    const data = await tokenRequest({
+    const data = await this.keycloak.tokenRequest({
       grant_type: 'authorization_code',
       client_id: clientId,
       client_secret: secret ?? '',
@@ -98,24 +93,22 @@ export class AuthService {
   }
 
   async logout(sid: string): Promise<void> {
-    
     if (!sid) return;
     const session = await this.sessions.get(sid);
     if (!session) return;
 
     const clientId = KeycloakEnvs.clientId;
     const clientSecret = KeycloakEnvs.clientSecret;
-    const refreshToken = clientId ? session.clients?.[clientId]?.refreshToken : undefined;
+    const refreshToken = clientId
+      ? session.clients?.[clientId]?.refreshToken
+      : undefined;
 
     if (clientId && refreshToken) {
       try {
-        await logoutRequest(
-          refreshToken,
-          {
-            id: clientId,
-            secret: clientSecret,
-          },
-        );
+        await this.keycloak.logoutRequest(refreshToken, {
+          id: clientId,
+          secret: clientSecret,
+        });
       } catch (e: any) {
         console.error('Error during Keycloak logout request:', e?.message || e);
       }
@@ -123,54 +116,80 @@ export class AuthService {
 
     await this.sessions.del(sid);
   }
-  
+
   async getProfile(sid: string): Promise<any> {
     const session = await this.sessions.get(sid);
     if (!session) throw new Error('Sesión no encontrada');
 
     const clientId = KeycloakEnvs.clientId;
-    const accessToken = clientId ? session.clients?.[clientId]?.accessToken : undefined;
+    const accessToken = clientId
+      ? session.clients?.[clientId]?.accessToken
+      : undefined;
     if (!accessToken) throw new Error('No hay token de acceso en la sesión');
 
     const profile = peekUserProfile(accessToken);
     return profile;
   }
 
-  async getPermissions(sid: string, clientId: string, audience: string): Promise<string[]> {
+  async getPermissions(
+    sid: string,
+    clientId: string,
+    audience: string,
+  ): Promise<string[]> {
     const session = await this.sessions.get(sid);
     if (!session) throw new Error('Sesión no encontrada');
-    const accessToken = clientId ? session.clients?.[clientId]?.accessToken : undefined;
+    const accessToken = clientId
+      ? session.clients?.[clientId]?.accessToken
+      : undefined;
     if (!accessToken) throw new Error('No hay token de acceso en la sesión');
-    const permissions= await umaRequest({
+    const permissions = await this.keycloak.umaRequest({
       accessToken,
       audience,
       responseMode: 'permissions',
-    })
+    });
     return permissions;
   }
 
-  async evaluatePermission(sid: string, clientId: string, audience: string, permission: string) {
+  async evaluatePermission(
+    sid: string,
+    clientId: string,
+    audience: string,
+    permission: string,
+  ) {
     const session = await this.sessions.get(sid);
     if (!session) throw new Error('Sesión no encontrada');
-    const accessToken = clientId ? session.clients?.[clientId]?.accessToken : undefined;
+    const accessToken = clientId
+      ? session.clients?.[clientId]?.accessToken
+      : undefined;
     if (!accessToken) throw new Error('No hay token de acceso en la sesión');
-    const permissions= await umaRequest({
+    const permissions = await this.keycloak.umaRequest({
       accessToken,
       audience,
       responseMode: 'decision',
       permission, // "resource#scope"
-    })
+    });
     return permissions;
   }
+  async verifySessionAccessToken(sessionId: string) {
+    const session = await this.sessions.get(sessionId);
+    if (!session) throw new Error('Sesión no encontrada');
+    const clientId = KeycloakEnvs.clientId;
+    const accessToken = clientId
+      ? session.clients?.[clientId]?.accessToken
+      : undefined;
+    if (!accessToken) throw new Error('No hay token de acceso en la sesión');
 
-  /** Verificación criptográfica del access_token guardado (issuer + azp∈permitidos) */
-  async verifySessionAccessToken(sessionId: string, clientId: string) {
-    const s = await this.store.getSession(sessionId);
-    if (!s) throw new Error('Sesión inválida o expirada');
-    const set = s.clients?.[clientId];
-    if (!set?.accessToken) throw new Error('No hay access_token para el client_id');
-    const allowed = Array.from(CLIENTS_BY_ID.keys()); // ahora dinámico
-    return this.kc.verifyAccessToken(set.accessToken, { allowedClients: allowed });
+    const { payload } = await this.keycloak.verifyAccessToken(accessToken, {
+      azp: clientId,
+      clockSkewSec: 90,
+    });
+
+    // Devuelve sólo lo esencial (o incluso podrías retornar void)
+    return {
+      valid: true,
+      sub: payload.sub,
+      azp: payload.azp,
+      exp: payload.exp,
+    };
   }
-  
 }

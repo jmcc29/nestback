@@ -22,12 +22,16 @@ import {
   ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
+import { Resource, Scope } from 'src/auth/decorators';
 
+
+@Resource('tasks')
 @ApiTags('tasks')
 @Controller()
 export class TasksController {
   constructor(private readonly tasksService: TasksService) {}
 
+  @Scope('list')
   @Get('tasks')
   @ApiOperation({
     summary: 'Listar tareas (opcional: ?orgId=alpha&projectId=erp)',
@@ -42,6 +46,7 @@ export class TasksController {
     return this.tasksService.findAll({ orgCode: orgId, projectCode: projectId });
   }
 
+  @Scope('list')
   @Get('orgs/:orgId/projects/:projectId/tasks')
   @ApiOperation({ summary: 'Listar tareas de un proyecto' })
   @ApiParam({ name: 'orgId', example: 'alpha' })
@@ -54,6 +59,7 @@ export class TasksController {
     return this.tasksService.findAll({ orgCode: orgId, projectCode: projectId });
   }
 
+  @Scope('view-single')
   @Get('tasks/:id')
   @ApiOperation({ summary: 'Obtener tarea por id (ej: task:alpha:erp:42)' })
   @ApiParam({ name: 'id', example: 'task:alpha:erp:42' })
@@ -63,6 +69,7 @@ export class TasksController {
     return this.tasksService.findOneById(id);
   }
 
+  @Scope('create')
   @Post('tasks')
   @ApiOperation({
     summary: 'Crear tarea (id=task:{orgCode}:{projectCode}:{taskNumber})',
@@ -100,6 +107,7 @@ export class TasksController {
     return this.tasksService.create(dto);
   }
 
+  @Scope('update')
   @Patch('tasks/:id')
   @ApiOperation({ summary: 'Actualizar tarea por id' })
   @ApiParam({ name: 'id', example: 'task:alpha:erp:42' })
@@ -109,6 +117,7 @@ export class TasksController {
     return this.tasksService.update(id, dto);
   }
 
+  @Scope('delete')
   @Delete('tasks/:id')
   @ApiOperation({ summary: 'Eliminar tarea por id' })
   @ApiParam({ name: 'id', example: 'task:alpha:erp:42' })

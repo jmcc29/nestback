@@ -16,7 +16,7 @@ import {
 import { RESOURCE_KEY } from '../decorators/resource.decorator';
 import { SCOPE_KEY } from '../decorators/scope-protected.decorator';
 import { extractSid, extractClientId, extractAudience } from '../utils/http';
-
+import { KeycloakEnvs } from 'src/config/envs';
 @Injectable()
 export class UserPermissionGuard implements CanActivate {
   constructor(
@@ -28,8 +28,8 @@ export class UserPermissionGuard implements CanActivate {
     const req = context.switchToHttp().getRequest<Request>();
 
     const sid = extractSid(req);
-    const clientId = extractClientId(req);
-    const audience = extractAudience(req);
+    const clientId = KeycloakEnvs.clientId;
+    const audience = KeycloakEnvs.clientId;
 
     if (!sid) {
       throw new UnauthorizedException('Falta cookie de sesión (sid)');

@@ -21,12 +21,15 @@ import {
   ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
+import { Resource, Scope } from 'src/auth/decorators';
 
+@Resource('orgs')
 @ApiTags('orgs')
 @Controller('orgs')
 export class OrgsController {
   constructor(private readonly OrgsService: OrgsService) {}
 
+  @Scope('list')
   @Get()
   @ApiOperation({ summary: 'Listar organizaciones' })
   @ApiOkResponse({
@@ -35,7 +38,8 @@ export class OrgsController {
   findAll() {
     return this.OrgsService.findAll();
   }
-
+  
+  @Scope('view-single')
   @Get(':id')
   @ApiOperation({ summary: 'Obtener una organización por id (ej: org:alpha)' })
   @ApiParam({ name: 'id', example: 'org:alpha' })
@@ -45,6 +49,7 @@ export class OrgsController {
     return this.OrgsService.findOneById(id);
   }
 
+  @Scope('create')
   @Post()
   @ApiOperation({
     summary: 'Crear una organización (id se genera como org:{code})',
@@ -75,6 +80,7 @@ export class OrgsController {
     return this.OrgsService.create(dto);
   }
 
+  @Scope('update')
   @Patch(':id')
   @ApiOperation({ summary: 'Actualizar nombre/description por id' })
   @ApiParam({ name: 'id', example: 'org:alpha' })
@@ -97,6 +103,7 @@ export class OrgsController {
     return this.OrgsService.update(id, dto);
   }
 
+  @Scope('delete')
   @Delete(':id')
   @ApiOperation({ summary: 'Eliminar una organización por id' })
   @ApiParam({ name: 'id', example: 'org:alpha' })

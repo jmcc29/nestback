@@ -8,6 +8,7 @@ import {
   Patch,
   Delete,
   Body,
+  Res,
 } from '@nestjs/common';
 import { ProjectsService } from './projects.service';
 import { CreateProjectDto } from './dto/create-project.dto';
@@ -22,12 +23,15 @@ import {
   ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
+import { Resource, Scope } from 'src/auth/decorators';
 
+@Resource('projects')
 @ApiTags('projects')
 @Controller()
 export class ProjectsController {
   constructor(private readonly projectService: ProjectsService) {}
 
+  @Scope('list')
   @Get('projects')
   @ApiOperation({
     summary: 'Listar proyectos (opcional: filtrar por ?orgId=alpha)',
@@ -38,6 +42,7 @@ export class ProjectsController {
     return this.projectService.findAll(orgId);
   }
 
+  @Scope('list')
   @Get('orgs/:orgId/projects')
   @ApiOperation({ summary: 'Listar proyectos de una organización' })
   @ApiParam({ name: 'orgId', example: 'alpha' })
@@ -46,6 +51,7 @@ export class ProjectsController {
     return this.projectService.findAll(orgId);
   }
 
+  @Scope('view-single')
   @Get('projects/:id')
   @ApiOperation({
     summary: 'Obtener un proyecto por id (ej: project:alpha:erp)',
@@ -57,6 +63,7 @@ export class ProjectsController {
     return this.projectService.findOneById(id);
   }
 
+  @Scope('create')
   @Post('projects')
   @ApiOperation({ summary: 'Crear un proyecto (id=project:{orgCode}:{code})' })
   @ApiBody({
@@ -87,6 +94,7 @@ export class ProjectsController {
     return this.projectService.create(dto);
   }
 
+  @Scope('update')
   @Patch('projects/:id')
   @ApiOperation({ summary: 'Actualizar nombre/description por id' })
   @ApiParam({ name: 'id', example: 'project:alpha:erp' })
@@ -96,6 +104,7 @@ export class ProjectsController {
     return this.projectService.update(id, dto);
   }
 
+  @Scope('delete')
   @Delete('projects/:id')
   @ApiOperation({ summary: 'Eliminar un proyecto por id' })
   @ApiParam({ name: 'id', example: 'project:alpha:erp' })

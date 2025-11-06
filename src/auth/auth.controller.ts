@@ -101,7 +101,11 @@ export class AuthController {
     if (!audience) {
       throw new Error('No se proporcionó audience para permissions');
     }
-    const permissions = await this.authService.getPermissions(sid, clientId, audience);
+    const permissions = await this.authService.getPermissions(
+      sid,
+      clientId,
+      audience,
+    );
     return permissions;
   }
 
@@ -131,7 +135,25 @@ export class AuthController {
     if (!permission) {
       throw new Error('No se proporcionó permission para permissions');
     }
-    const result = await this.authService.evaluatePermission(sid, clientId, audience, permission);
+    const result = await this.authService.evaluatePermission(
+      sid,
+      clientId,
+      audience,
+      permission,
+    );
+    return result;
+  }
+
+  @Get('verifyAccessToken')
+  async verifyAccessToken(
+    @Req() req: Request,
+    @Query('sid') sidFromQuery?: string,
+  ) {
+    const sid = sidFromQuery ?? req.cookies?.sid;
+    if (!sid) {
+      throw new Error('No se proporcionó sid');
+    }
+    const result = await this.authService.verifySessionAccessToken(sid);
     return result;
   }
 }
